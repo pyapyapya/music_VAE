@@ -1,0 +1,8 @@
+.idea/
+__pycache__/
+data/
+magenta/
+note-seq/
+venv/
+*.py
+
