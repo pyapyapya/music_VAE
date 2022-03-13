@@ -83,7 +83,7 @@ class MIDIParser:
 
     def parse(self):
         for midi_data in tqdm(self.train_info):
-            preprocessor: DrumExtractor = DrumExtractor(midi_data)
+            preprocessor: MIDIPreprocessor = MIDIPreprocessor(midi_data)
             preprocessor.adjust_time()
             piano_roll = preprocessor.get_piano_roll()
             self.record.append(piano_roll)
@@ -94,9 +94,9 @@ class MIDIParser:
             dump(self.record, pkl)
 
 
-class DrumExtractor:
+class MIDIPreprocessor:
     """
-    MIDI Data에서 Drum 데이터를 전처리하여 vector로 변환하는 클래스
+    MIDI Data를 전처리하여 vector로 변환하는 클래스
     """
     def __init__(self, midi_data: Dict[str, str]):
         self.midi_data: Dict[str, str] = midi_data
@@ -104,23 +104,22 @@ class DrumExtractor:
         self.end_time: float = float(midi_data['duration'])
 
         self.dir_path = PATH['DIR_PATH']
-
         self.ROLAND_DRUM_PITCH_CLASSES = 9
         self.MINUTE = 60
-        self.ticks: float = 1 / (self.bpm / self.MINUTE) / 4
 
+        self.ticks: float = 1 / (self.bpm / self.MINUTE) / 4
         self.file_path = self.get_filename()
+        self.time_numerator, self.time_denominator = self.get_time_signature()
         self.pm: PrettyMIDI = PrettyMIDI(self.file_path)
 
     def get_piano_roll(self) -> array:
         """
-        [TODO] piano_roll 생성할 때, velocity 조절하도록 만들어야 함
-        [TODO] 학습 진행할 때는 velocity가 없는 one-hot option도 필요할 듯
-
         미디 정보를 이용하여 vector로 표현할 수 있는 piano roll로 만드는 함수
-        :return: np.array [9 channel, total ticks]
+        [TODO] piano_roll 생성할 때, velocity 조절하도록 만들어야 함
+        :return: np.array [9 channel x frequency(bpm) * end_time]
         """
-
+        # 총 시간 동안 4분의 4박자를 bpm 만큼 칠 수 있고, 1틱을 16분의 1 퀀타이즈 해줬기 때문
+        # bpm: 60이라 1분에 60번 때리는데, 곡이 60초라면? (60 * bpm) * quantize
         piano_roll: array = zeros((self.ROLAND_DRUM_PITCH_CLASSES, int(self.end_time//self.ticks)))
         notes = self.pm.instruments[0].notes
 
@@ -133,13 +132,8 @@ class DrumExtractor:
         return piano_roll
 
     def adjust_time(self):
-        """
-        start time을 0초로 조정
-        :return:
-        """
         song_start = self.pm.instruments[0].notes[0].start
         song_end = self.end_time
-
         # Extract Only-Drum in MIDI File
         notes = self.pm.instruments[0].notes
         for note in notes:
@@ -148,11 +142,6 @@ class DrumExtractor:
                 note.end -= song_start
 
     def _time_quantize(self, note: Note):
-        """
-        re-ascending notes using quantized notes
-        :param note:
-        :return:
-        """
         start = note.start
         end = note.end
 
@@ -163,16 +152,18 @@ class DrumExtractor:
         note.start = quantize_start
         note.end = quantize_end
 
-    def _quantize_round(self, value: float) -> float:
+    def _quantize_round(self, value):
         """
-        퀀타이즈 Default 1/16
+        1/16 분음표 기준으로 퀀타이즈
         :param value: flaot start_time
         :return: quantized start time
         """
         ratio = self.ticks
+        # return (value + ratio / 2) // ratio * ratio
+
         return (value + ratio / 2) // ratio * ratio
 
-    def get_filename(self) -> str:
+    def get_filename(self):
         file_path = self.midi_data['midi_filename']
         midi_path = os.path.join(self.dir_path, file_path)
         return midi_path
