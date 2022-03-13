@@ -76,15 +76,14 @@ class MIDIParser:
     MIDI Data를 읽고, MIDIPreprocessor에 의해 변환된 벡터를 pickle로 쓰는하는 클래스
     """
     def __init__(self):
+
         self.dir_path = PATH['DIR_PATH']
         self.train_info, self.val_info, self.test_info = CSVParser().parse()
-        self.record: List = []
+        self.record: List[array, array] = []
 
-        # self.preprocessor = MIDIPreprocessor()
-
-    def parse_midi(self):
+    def parse(self):
         for midi_data in tqdm(self.train_info):
-            preprocessor = MIDIPreprocessor(midi_data)
+            preprocessor: MIDIPreprocessor = MIDIPreprocessor(midi_data)
             preprocessor.adjust_time()
             piano_roll = preprocessor.get_piano_roll()
             self.record.append(piano_roll)
@@ -101,25 +100,17 @@ class MIDIPreprocessor:
     """
     def __init__(self, midi_data: Dict[str, str]):
         self.midi_data: Dict[str, str] = midi_data
+        self.bpm: int = int(midi_data['bpm'])
+        self.end_time: float = float(midi_data['duration'])
 
         self.dir_path = PATH['DIR_PATH']
         self.ROLAND_DRUM_PITCH_CLASSES = 9
+        self.MINUTE = 60
 
+        self.ticks: float = 1 / (self.bpm / self.MINUTE) / 4
         self.file_path = self.get_filename()
         self.time_numerator, self.time_denominator = self.get_time_signature()
         self.pm: PrettyMIDI = PrettyMIDI(self.file_path)
-
-        self.frequency: int = int(self.midi_data['bpm'])
-
-    def __call__(self, midi_data: Dict[str, str]):
-        # MIDI 파일 상태 정보 초기화
-        self.midi_data: Dict[str, str] = midi_data
-        self.file_path = self.get_filename()
-        self.time_numerator, self.time_denominator = self.get_time_signature()
-
-        # MIDI 파일 정보 수정
-        self.pm: PrettyMIDI = PrettyMIDI(self.file_path)
-        self.frequency: int = int(midi_data['bpm'])
 
     def get_piano_roll(self) -> array:
         """
@@ -127,45 +118,49 @@ class MIDIPreprocessor:
         [TODO] piano_roll 생성할 때, velocity 조절하도록 만들어야 함
         :return: np.array [9 channel x frequency(bpm) * end_time]
         """
-        frequency = self.frequency
-        end_time = self.pm.get_end_time()
-
-        piano_roll: array = zeros((self.ROLAND_DRUM_PITCH_CLASSES, int(frequency*end_time)))
+        # 총 시간 동안 4분의 4박자를 bpm 만큼 칠 수 있고, 1틱을 16분의 1 퀀타이즈 해줬기 때문
+        # bpm: 60이라 1분에 60번 때리는데, 곡이 60초라면? (60 * bpm) * quantize
+        piano_roll: array = zeros((self.ROLAND_DRUM_PITCH_CLASSES, int(self.end_time//self.ticks)))
         notes = self.pm.instruments[0].notes
 
         # Extract Only-Drum in MIDI File
         for note in notes:
             drum_class: int = ROLAND_DRUM_PITCH_CLASSES[note.pitch]
-            start_bar = int(note.start*frequency)
-            end_bar = int(note.end*frequency)
+            start_bar = int(note.start//self.ticks)
+            end_bar = int(note.end//self.ticks)
             piano_roll[drum_class, start_bar:end_bar] = note.velocity
-
         return piano_roll
 
     def adjust_time(self):
         song_start = self.pm.instruments[0].notes[0].start
-        song_end = self.pm.get_end_time()
-
+        song_end = self.end_time
         # Extract Only-Drum in MIDI File
         notes = self.pm.instruments[0].notes
         for note in notes:
             if note.start >= song_start and note.end <= song_end:
                 note.start -= song_start
                 note.end -= song_start
-            self._time_quantize(note)
 
     def _time_quantize(self, note: Note):
         start = note.start
         end = note.end
-        quantize_start = self._quantize_round(start)
-        diff = start - quantize_start
-        quantize_end = end + diff
 
+        quantize_start = self._quantize_round(start)
+
+        diff = start - quantize_start
+        quantize_end = end - diff
         note.start = quantize_start
         note.end = quantize_end
 
     def _quantize_round(self, value):
-        ratio = self.time_numerator / self.time_denominator
+        """
+        1/16 분음표 기준으로 퀀타이즈
+        :param value: flaot start_time
+        :return: quantized start time
+        """
+        ratio = self.ticks
+        # return (value + ratio / 2) // ratio * ratio
+
         return (value + ratio / 2) // ratio * ratio
 
     def get_filename(self):
