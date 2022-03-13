@@ -7,12 +7,17 @@
 """
 
 import os
-from copy import deepcopy
+from pickle import load, dump
 from csv import DictReader
 from typing import List, Dict, Tuple
 
-import pretty_midi
+from numpy import array, zeros
+from pretty_midi import PrettyMIDI
+from pretty_midi import Note
+from tqdm import tqdm
+
 from config import PATH
+from constant import ROLAND_DRUM_PITCH_CLASSES
 
 
 class CSVParser:
@@ -63,66 +68,115 @@ class CSVParser:
         )
 
         assert total_files == 1150, "파싱한 데이터 셋이 Groove Dataset 개수(1,150)개와 같지 않음"
-        print(self.train_info)
         return self.train_info, self.val_info, self.test_info
+
+
+class MIDIParser:
+    """
+    MIDI Data를 읽고, MIDIPreprocessor에 의해 변환된 벡터를 pickle로 쓰는하는 클래스
+    """
+    def __init__(self):
+        self.dir_path = PATH['DIR_PATH']
+        self.train_info, self.val_info, self.test_info = CSVParser().parse()
+        self.record: List = []
+
+        # self.preprocessor = MIDIPreprocessor()
+
+    def parse_midi(self):
+        for midi_data in tqdm(self.train_info):
+            preprocessor = MIDIPreprocessor(midi_data)
+            preprocessor.adjust_time()
+            piano_roll = preprocessor.get_piano_roll()
+            self.record.append(piano_roll)
+
+    def midi2pkl(self):
+        file_name = os.path.join(self.dir_path, 'record.pkl')
+        with open(file_name, 'wb') as pkl:
+            dump(self.record, pkl)
 
 
 class MIDIPreprocessor:
     """
-    [TODO]
-    1. Make [9 channel x timestamp] rolls
-    2. Make Tap (how about 3/4, 6/8 ... )
-    3. Quantize Time
+    MIDI Data를 전처리하여 vector로 변환하는 클래스
     """
-    def __init__(self):
+    def __init__(self, midi_data: Dict[str, str]):
+        self.midi_data: Dict[str, str] = midi_data
+
         self.dir_path = PATH['DIR_PATH']
-        csv_parser = CSVParser()
-        self.train_info, self.val_info, self.test_info = csv_parser.parse()
+        self.ROLAND_DRUM_PITCH_CLASSES = 9
 
-    def load_midi(self):
+        self.file_path = self.get_filename()
+        self.time_numerator, self.time_denominator = self.get_time_signature()
+        self.pm: PrettyMIDI = PrettyMIDI(self.file_path)
+
+        self.frequency: int = int(self.midi_data['bpm'])
+
+    def __call__(self, midi_data: Dict[str, str]):
+        # MIDI 파일 상태 정보 초기화
+        self.midi_data: Dict[str, str] = midi_data
+        self.file_path = self.get_filename()
+        self.time_numerator, self.time_denominator = self.get_time_signature()
+
+        # MIDI 파일 정보 수정
+        self.pm: PrettyMIDI = PrettyMIDI(self.file_path)
+        self.frequency: int = int(midi_data['bpm'])
+
+    def get_piano_roll(self) -> array:
         """
-        MIDI 데이터 전처리 순서
-        1. MIDI Load
-        2.
-        :return:
+        미디 정보를 이용하여 vector로 표현할 수 있는 piano roll로 만드는 함수
+        [TODO] piano_roll 생성할 때, velocity 조절하도록 만들어야 함
+        :return: np.array [9 channel x frequency(bpm) * end_time]
         """
-        for midi_data in self.train_info[:3]:
-            file_path = midi_data['midi_filename']
-            midi_path = os.path.join(self.dir_path, file_path)
-            pm = pretty_midi.PrettyMIDI(midi_path)
+        frequency = self.frequency
+        end_time = self.pm.get_end_time()
 
-            bpm = midi_data['bpm']
-            duration = midi_data['duration']
+        piano_roll: array = zeros((self.ROLAND_DRUM_PITCH_CLASSES, int(frequency*end_time)))
+        notes = self.pm.instruments[0].notes
 
-            tempo_change_times, tempo_change_bpm = pm.get_tempo_changes()
-            song_start = 0
-            song_end = pm.get_end_time()
-            print(file_path)
-            print(tempo_change_times, tempo_change_bpm, song_end)
-            self.adjust_time(pm)
+        # Extract Only-Drum in MIDI File
+        for note in notes:
+            drum_class: int = ROLAND_DRUM_PITCH_CLASSES[note.pitch]
+            start_bar = int(note.start*frequency)
+            end_bar = int(note.end*frequency)
+            piano_roll[drum_class, start_bar:end_bar] = note.velocity
 
-    def adjust_time(self, pm):
-        song_start = pm.instruments[0].notes[0].start
-        song_end = pm.get_end_time()
+        return piano_roll
 
-        for instrument in pm.instruments:
-            new_notes = []
-            for note in instrument.notes:
-                if note.start >= song_start and note.end <= song_end:
-                    note.start -= song_start
-                    note.end -= song_start
-                    new_notes.append(note)
-            pm.instruments[0].notes = new_notes
+    def adjust_time(self):
+        song_start = self.pm.instruments[0].notes[0].start
+        song_end = self.pm.get_end_time()
 
-    def parse_midi(self):
-        pass
+        # Extract Only-Drum in MIDI File
+        notes = self.pm.instruments[0].notes
+        for note in notes:
+            if note.start >= song_start and note.end <= song_end:
+                note.start -= song_start
+                note.end -= song_start
+            self._time_quantize(note)
 
-    def get_piano_roll(self):
-        pass
+    def _time_quantize(self, note: Note):
+        start = note.start
+        end = note.end
+        quantize_start = self._quantize_round(start)
+        diff = start - quantize_start
+        quantize_end = end + diff
 
-    def quantize(self):
-        pass
+        note.start = quantize_start
+        note.end = quantize_end
 
+    def _quantize_round(self, value):
+        ratio = self.time_numerator / self.time_denominator
+        return (value + ratio / 2) // ratio * ratio
 
-midi_processor = MIDIPreprocessor()
-midi_processor.load_midi()
+    def get_filename(self):
+        file_path = self.midi_data['midi_filename']
+        midi_path = os.path.join(self.dir_path, file_path)
+        return midi_path
+
+    def get_time_signature(self) -> Tuple[int, int]:
+        time_signature = self.midi_data['midi_filename'].split('/')[-1].split('_')[4]
+        time_signature = time_signature.split('.')[0].split('-')
+        time_numerator = int(time_signature[0])
+        time_denominator = int(time_signature[1])
+
+        return time_numerator, time_denominator
