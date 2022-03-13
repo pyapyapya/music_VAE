@@ -7,13 +7,12 @@
 """
 
 import os
-from pickle import load, dump
 from csv import DictReader
-from typing import List, Dict, Tuple
+from pickle import dump
+from typing import Dict, List, Tuple
 
 from numpy import array, zeros
-from pretty_midi import PrettyMIDI
-from pretty_midi import Note
+from pretty_midi import Note, PrettyMIDI
 from tqdm import tqdm
 
 from config import PATH
@@ -75,22 +74,30 @@ class MIDIParser:
     """
     MIDI Data를 읽고, MIDIPreprocessor에 의해 변환된 벡터를 pickle로 쓰는하는 클래스
     """
+
     def __init__(self):
 
-        self.dir_path = PATH['DIR_PATH']
+        self.dir_path = PATH["DIR_PATH"]
         self.train_info, self.val_info, self.test_info = CSVParser().parse()
         self.record: List[array, array] = []
 
     def parse(self):
         for midi_data in tqdm(self.train_info):
-            preprocessor: MIDIPreprocessor = MIDIPreprocessor(midi_data)
+            midi_file_name = self.get_filename(midi_data)
+
+            preprocessor: MIDIPreprocessor = MIDIPreprocessor(midi_data, midi_file_name)
             preprocessor.adjust_time()
             piano_roll = preprocessor.get_piano_roll()
             self.record.append(piano_roll)
 
+    def get_filename(self, midi_data):
+        file_path = midi_data["midi_filename"]
+        midi_file = os.path.join(self.dir_path, file_path)
+        return midi_file
+
     def midi2pkl(self):
-        file_name = os.path.join(self.dir_path, 'record.pkl')
-        with open(file_name, 'wb') as pkl:
+        file_name = os.path.join(self.dir_path, "record.pkl")
+        with open(file_name, "wb") as pkl:
             dump(self.record, pkl)
 
 
@@ -98,19 +105,17 @@ class MIDIPreprocessor:
     """
     MIDI Data를 전처리하여 vector로 변환하는 클래스
     """
-    def __init__(self, midi_data: Dict[str, str]):
+
+    def __init__(self, midi_data: Dict[str, str], file_path: str):
         self.midi_data: Dict[str, str] = midi_data
-        self.bpm: int = int(midi_data['bpm'])
-        self.end_time: float = float(midi_data['duration'])
+        self.bpm: int = int(midi_data["bpm"])
+        self.end_time: float = float(midi_data["duration"])
 
-        self.dir_path = PATH['DIR_PATH']
-        self.ROLAND_DRUM_PITCH_CLASSES = 9
-        self.MINUTE = 60
+        self.n_drums = 9
+        self.minute = 60
 
-        self.ticks: float = 1 / (self.bpm / self.MINUTE) / 4
-        self.file_path = self.get_filename()
-        self.time_numerator, self.time_denominator = self.get_time_signature()
-        self.pm: PrettyMIDI = PrettyMIDI(self.file_path)
+        self.ticks: float = 1 / (self.bpm / self.minute) / 4
+        self.pretty_midi: PrettyMIDI = PrettyMIDI(file_path)
 
     def get_piano_roll(self) -> array:
         """
@@ -118,30 +123,32 @@ class MIDIPreprocessor:
         [TODO] piano_roll 생성할 때, velocity 조절하도록 만들어야 함
         :return: np.array [9 channel x frequency(bpm) * end_time]
         """
-        # 총 시간 동안 4분의 4박자를 bpm 만큼 칠 수 있고, 1틱을 16분의 1 퀀타이즈 해줬기 때문
-        # bpm: 60이라 1분에 60번 때리는데, 곡이 60초라면? (60 * bpm) * quantize
-        piano_roll: array = zeros((self.ROLAND_DRUM_PITCH_CLASSES, int(self.end_time//self.ticks)))
-        notes = self.pm.instruments[0].notes
+
+        piano_roll: array = zeros(
+            (self.n_drums, int(self.end_time // self.ticks))
+        )
+        notes = self.pretty_midi.instruments[0].notes
 
         # Extract Only-Drum in MIDI File
         for note in notes:
             drum_class: int = ROLAND_DRUM_PITCH_CLASSES[note.pitch]
-            start_bar = int(note.start//self.ticks)
-            end_bar = int(note.end//self.ticks)
+            start_bar = int(note.start // self.ticks)
+            end_bar = int(note.end // self.ticks)
             piano_roll[drum_class, start_bar:end_bar] = note.velocity
         return piano_roll
 
     def adjust_time(self):
-        song_start = self.pm.instruments[0].notes[0].start
+        song_start = self.pretty_midi.instruments[0].notes[0].start
         song_end = self.end_time
+
         # Extract Only-Drum in MIDI File
-        notes = self.pm.instruments[0].notes
+        notes = self.pretty_midi.instruments[0].notes
         for note in notes:
             if note.start >= song_start and note.end <= song_end:
                 note.start -= song_start
                 note.end -= song_start
 
-    def _time_quantize(self, note: Note):
+    def time_quantize(self, note: Note):
         start = note.start
         end = note.end
 
@@ -159,18 +166,11 @@ class MIDIPreprocessor:
         :return: quantized start time
         """
         ratio = self.ticks
-        # return (value + ratio / 2) // ratio * ratio
-
         return (value + ratio / 2) // ratio * ratio
 
-    def get_filename(self):
-        file_path = self.midi_data['midi_filename']
-        midi_path = os.path.join(self.dir_path, file_path)
-        return midi_path
-
     def get_time_signature(self) -> Tuple[int, int]:
-        time_signature = self.midi_data['midi_filename'].split('/')[-1].split('_')[4]
-        time_signature = time_signature.split('.')[0].split('-')
+        time_signature = self.midi_data["midi_filename"].split("/")[-1].split("_")[4]
+        time_signature = time_signature.split(".")[0].split("-")
         time_numerator = int(time_signature[0])
         time_denominator = int(time_signature[1])
 
