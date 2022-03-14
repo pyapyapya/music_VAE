@@ -1,9 +1,11 @@
+import os
 from typing import Dict, List, Union
 
-from numpy import array
+from numpy import array, load
 
 from preprocessor import MIDIParser
 from sequence import SplitSequence
+from config import PATH
 
 
 class DataPipeline:
@@ -26,6 +28,11 @@ class DataPipeline:
         self.ticks: int = ticks
 
     def process(self) -> Union[array, array, array]:
+        file_name = 'subsequence_record.npy'
+        sub_sequence_file = os.path.join(PATH['DIR_PATH'], file_name)
+        if os.path.exists(sub_sequence_file):
+            return load(sub_sequence_file)
+
         record: List[array, array] = self.get_parse_midi()
         sub_sequence: Union[array, array, array] = self.get_split_sequence(record)
         return sub_sequence
@@ -59,4 +66,5 @@ class DataPipeline:
             record=record, slice_bar=self.slice_bar, ticks=self.ticks
         )
         sub_sequence: Union[array, array, array] = split_sequence.make_subsequence_bar()
+        split_sequence.save_subsequence_npy()
         return sub_sequence
