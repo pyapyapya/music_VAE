@@ -75,21 +75,22 @@ class MIDIParser:
     MIDI Data를 읽고, MIDIPreprocessor에 의해 변환된 벡터를 pickle로 쓰는하는 클래스
     """
 
-    def __init__(self, numerator: int = 4, denominator: int = 4):
+    def __init__(self, data_info: List[Dict[str, str]], numerator: int = 4, denominator: int = 4):
+        self.data_info = data_info
         self.time_signature: str = str(numerator) + '-' + str(denominator)
 
         self.dir_path = PATH["DIR_PATH"]
-        self.train_info, self.val_info, self.test_info = CSVParser().parse()
         self.record: List[array, array] = []
 
     def parse(self):
-        for midi_data in tqdm(self.train_info):
+        for midi_data in tqdm(self.data_info):
             midi_file_path = self.get_midi_path(midi_data)
             if self.check_time_signature(midi_data):
                 preprocessor: MIDIPreprocessor = MIDIPreprocessor(midi_data, midi_file_path)
                 preprocessor.adjust_time()
                 piano_roll = preprocessor.get_piano_roll()
                 self.record.append(piano_roll)
+        return self.record
 
     def get_midi_path(self, midi_data):
         file_path = midi_data["midi_filename"]
@@ -104,9 +105,7 @@ class MIDIParser:
     def check_time_signature(self, midi_data) -> bool:
         midi_data = midi_data["midi_filename"].split("/")[-1].split("_")[4]
         time_signature: str = midi_data.split(".")[0]
-        if time_signature == self.time_signature:
-            return True
-        return False
+        return time_signature == self.time_signature
 
 
 class MIDIPreprocessor:
@@ -114,10 +113,12 @@ class MIDIPreprocessor:
     MIDI Data를 전처리하여 vector로 변환하는 클래스
     """
 
-    def __init__(self, midi_data: Dict[str, str], file_path: str):
+    def __init__(self, midi_data: Dict[str, str], file_path: str, one_hot: bool = True):
         self.midi_data: Dict[str, str] = midi_data
         self.bpm: int = int(midi_data["bpm"])
         self.end_time: float = float(midi_data["duration"])
+
+        self.one_hot: bool = one_hot
 
         self.n_drums = 9
         self.minute = 60
@@ -144,6 +145,10 @@ class MIDIPreprocessor:
             drum_class: int = ROLAND_DRUM_PITCH_CLASSES[note.pitch]
             start_bar = int(note.start // self.ticks)
             end_bar = int(note.end // self.ticks)
+
+            if self.one_hot:
+                note.velocity = 1
+
             piano_roll[drum_class, start_bar:end_bar] = note.velocity
         return piano_roll
 
@@ -169,11 +174,11 @@ class MIDIPreprocessor:
         note.start = quantize_start
         note.end = quantize_end
 
-    def _quantize_round(self, value):
+    def _quantize_round(self, note_value):
         """
         1/16 분음표 기준으로 퀀타이즈
         :param value: flaot start_time
         :return: quantized start time
         """
         ratio = self.ticks
-        return (value + ratio / 2) // ratio * ratio
+        return (note_value + ratio / 2) // ratio * ratio
