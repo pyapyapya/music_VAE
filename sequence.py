@@ -1,8 +1,8 @@
 import os
-from pickle import dump, load
+import pickle
 from typing import List, Union
 
-from numpy import array
+from numpy import array, save
 from tqdm import tqdm
 
 from config import PATH
@@ -22,14 +22,17 @@ class SplitSequence:
 
     """
 
-    def __init__(self, slice_bar: int = 4, ticks: int = 8):
+    def __init__(self, record=None, slice_bar: int = 4, ticks: int = 16):
+        if record is None:
+            self.record: Union[array, array, array] = self.load_midi_pkl()
+        self.record: Union[array, array, array] = record
+
         self.slice_bar: int = slice_bar
         self.ticks: int = ticks
         self.max_sequence: int = self.slice_bar * self.ticks
 
-        self.dir_path = PATH["DIR_PATH"]
+        self.dir_path = PATH['DIR_PATH']
 
-        self.record: Union[array, array, array] = self.load_midi_pkl()
         self.sub_sequence_bar: array = self.make_subsequence_bar()
 
     def make_subsequence_bar(self) -> array:
@@ -69,15 +72,20 @@ class SplitSequence:
         return midi_score
 
     def load_midi_pkl(self) -> List[Union[array, array]]:
-        file_name = "record.pkl"
+        file_name = 'record.pkl'
         file_path = os.path.join(self.dir_path, file_name)
         with open(file_path, "rb") as pkl:
-            record: List[array, array] = load(pkl)
+            record: List[array, array] = pickle.load(pkl)
         return record
 
     def save_subsequence_pkl(self):
-        file_name = "subsequence_record.pkl"
+        file_name = 'subsequence_record.pkl'
         file_path = os.path.join(self.dir_path, file_name)
 
-        with open(file_path, "wb") as pkl:
-            dump(self.sub_sequence_bar, pkl)
+        with open(file_path, 'wb') as pkl:
+            pickle.dump(self.sub_sequence_bar, pkl)
+
+    def save_subsequence_npy(self):
+        file_name = 'subsequence_record.npy'
+        file_path = os.path.join(self.dir_path, file_name)
+        save(file_path, self.sub_sequence_bar)
