@@ -75,7 +75,8 @@ class MIDIParser:
     MIDI Data를 읽고, MIDIPreprocessor에 의해 변환된 벡터를 pickle로 쓰는하는 클래스
     """
 
-    def __init__(self):
+    def __init__(self, numerator: int = 4, denominator: int = 4):
+        self.time_signature: str = str(numerator) + '-' + str(denominator)
 
         self.dir_path = PATH["DIR_PATH"]
         self.train_info, self.val_info, self.test_info = CSVParser().parse()
@@ -83,22 +84,29 @@ class MIDIParser:
 
     def parse(self):
         for midi_data in tqdm(self.train_info):
-            midi_file_name = self.get_filename(midi_data)
+            midi_file_path = self.get_midi_path(midi_data)
+            if self.check_time_signature(midi_data):
+                preprocessor: MIDIPreprocessor = MIDIPreprocessor(midi_data, midi_file_path)
+                preprocessor.adjust_time()
+                piano_roll = preprocessor.get_piano_roll()
+                self.record.append(piano_roll)
 
-            preprocessor: MIDIPreprocessor = MIDIPreprocessor(midi_data, midi_file_name)
-            preprocessor.adjust_time()
-            piano_roll = preprocessor.get_piano_roll()
-            self.record.append(piano_roll)
-
-    def get_filename(self, midi_data):
+    def get_midi_path(self, midi_data):
         file_path = midi_data["midi_filename"]
-        midi_file = os.path.join(self.dir_path, file_path)
-        return midi_file
+        midi_file_path = os.path.join(self.dir_path, file_path)
+        return midi_file_path
 
     def midi2pkl(self):
         file_name = os.path.join(self.dir_path, "record.pkl")
         with open(file_name, "wb") as pkl:
             dump(self.record, pkl)
+
+    def check_time_signature(self, midi_data) -> bool:
+        midi_data = midi_data["midi_filename"].split("/")[-1].split("_")[4]
+        time_signature: str = midi_data.split(".")[0]
+        if time_signature == self.time_signature:
+            return True
+        return False
 
 
 class MIDIPreprocessor:
@@ -119,8 +127,10 @@ class MIDIPreprocessor:
 
     def get_piano_roll(self) -> array:
         """
-        미디 정보를 이용하여 vector로 표현할 수 있는 piano roll로 만드는 함수
         [TODO] piano_roll 생성할 때, velocity 조절하도록 만들어야 함
+        [TODO] training 할 때는, velocity를 one-hot-encoding 으로 표현할 필요성 있음
+
+        미디 정보를 이용하여 vector로 표현할 수 있는 piano roll로 만드는 함수
         :return: np.array [9 channel x frequency(bpm) * end_time]
         """
 
@@ -167,11 +177,3 @@ class MIDIPreprocessor:
         """
         ratio = self.ticks
         return (value + ratio / 2) // ratio * ratio
-
-    def get_time_signature(self) -> Tuple[int, int]:
-        time_signature = self.midi_data["midi_filename"].split("/")[-1].split("_")[4]
-        time_signature = time_signature.split(".")[0].split("-")
-        time_numerator = int(time_signature[0])
-        time_denominator = int(time_signature[1])
-
-        return time_numerator, time_denominator
