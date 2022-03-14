@@ -26,17 +26,15 @@ class SplitSequence:
         if record is None:
             self.record: Union[array, array, array] = self.load_midi_pkl()
         self.record: Union[array, array, array] = record
-
         self.slice_bar: int = slice_bar
         self.ticks: int = ticks
         self.max_sequence: int = self.slice_bar * self.ticks
 
         self.dir_path = PATH['DIR_PATH']
 
-        self.sub_sequence_bar: array = self.make_subsequence_bar()
+        self.sub_sequence_bar: Union[array, array, array] = []
 
     def make_subsequence_bar(self) -> array:
-        sub_sequence_bar: List[array, array] = []
         for midi_score in tqdm(self.record):
             sequence = midi_score.shape[1]
             if sequence > self.max_sequence:
@@ -44,14 +42,14 @@ class SplitSequence:
                 split_midi_score = self.split_subsequence(midi_score)
 
                 for batch_idx in range(len(split_midi_score)):
-                    sub_sequence_bar.append(array(split_midi_score[batch_idx]))
+                    self.sub_sequence_bar.append(array(split_midi_score[batch_idx]))
 
-        return array(sub_sequence_bar)
+        return array(self.sub_sequence_bar)
 
     def split_subsequence(self, midi_score: array) -> List[Union[array, array, array]]:
         """
         2d array -> 3d array로 배치형태로 구성. 이후 list로 변환
-        :param midi_score: [9 channel, midi_max_sequence]로 구성된 array
+        :param midi_score: [batch_size, 9 channel, midi_max_sequence]로 구성된 array
         :return: 3d array -> 3d list
         """
         midi_score: List[Union[array, array, array]] = midi_score.reshape(
