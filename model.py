@@ -23,20 +23,19 @@ class BidirectionalLstmEncoder(nn.Module):
                               hidden_size=hidden_size,
                               num_layers=num_layers,
                               bidirectional=True,
-                              batch_first=True)
+                              batch_first=True).cuda()
 
         # two Latent Vector
         self.mu = nn.Linear(in_features=hidden_size * 2,
-                            out_features=latent_size)
+                            out_features=latent_size).cuda()
 
         self.sigma = nn.Linear(in_features=hidden_size * 2,
-                               out_features=latent_size)
+                               out_features=latent_size).cuda()
 
-        self.softplus = nn.Softplus()
+        self.softplus = nn.Softplus().cuda()
 
     def forward(self, input_enc: Tensor):
         batch_size = input_enc.shape[0]
-
         # Get Final State Vector in Bi-LSTM hidden
         _, (h_n, c_n) = self.bilstm(input_enc)
         h_n = h_n.view(self.num_layers, 2, batch_size, self.hidden_size)
