@@ -11,7 +11,7 @@ from config import PATH
 
 class MIDIDataset(Dataset):
     """
-    Pytorch framework를 이용하여 Model을 훈련하기 위한 Dataset 구축하는 클래스
+    Model을 훈련하기 위한 Dataset 구축하는 클래스
     """
     def __init__(self, sequence_bar: Union[array, array, array]):
         self.dir_path = PATH['DIR_PATH']
