@@ -12,7 +12,7 @@ class SplitSequence:
     """
     MIDI Note Sequence를 Sub_Sequence로 나누는 작업
     slice_bar는 자를 마디의 개수를 의미 Default: 4
-    ticks는 마디 내에서 기준으로 할 박자를 무엇으로 할지를 의미 Default: 8
+    ticks는 마디 내에서 기준으로 할 박자를 무엇으로 할지를 의미 Default: 16
 
     Max_Sequence는 slice_bar와 ticks를 곱함으로써, 총 Notes Sequence를 가짐
 
