@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from torch import Tensor, cat, nn
+from torch import Tensor, cat, nn, rand_like
 
 
 class BidirectionalLstmEncoder(nn.Module):
@@ -63,6 +63,25 @@ class BidirectionalLstmEncoder(nn.Module):
         return mu, sigma
 
 
+class Conductor(nn.Module):
+    def __init__(self, latent_size: int = 512,
+                 hidden_size: int = 1024,
+                 output_size: int = 512):
+        super(Conductor, self).__init__()
+        self.latent_embedding = nn.Sequential(
+            nn.Linear(latent_size, latent_size),
+            nn.Tanh()
+        )
+
+    def forward(self, latent_vector):
+        z = self.latent_embedding(latent_vector)
+        self.init_hidden(z)
+        pass
+
+    def init_hidden(self, z):
+        pass
+
+
 class StackLSTMDecoder(nn.Module):
     """
     Stack Decoder
@@ -95,5 +114,13 @@ class MusicVAE(nn.Module):
     def __init__(self):
         super(MusicVAE, self).__init__()
 
-    def forward(self, x):
+        self.encoder = BidirectionalLstmEncoder()
+        self.conductor = Conductor()
+
+        pass
+
+    def forward(self, input_data):
+        mu, sigma = self.encoder(input_data)
+        eps = rand_like(sigma, requires_grad=False)
+        latent_vector = mu + (sigma * eps)
         pass
