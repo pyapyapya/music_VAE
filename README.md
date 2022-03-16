@@ -24,9 +24,9 @@
 - MIDI 데이터 파싱 및 전처리
   - 음악이 0초부터 시작하는 `adjust_time` 구현
   - 16th note interval 만큼 `quantize` 기능 구현
-  - MIDI 데이터를 벡터화 할 수 있는 `piano_roll` 구현 (9 channels, Max_Sequence)
+  - MIDI 데이터를 벡터화 할 수 있는 `piano_roll` 구현 (batch, 9 channels, Max_Sequence)
 - MIDI 학습 데이터 구성
-  - 음악을 데이터를 4-bar 단위로 나누는 기능 구현
+  - 음악을 데이터를 4-bar 단위로 나누는 `Split_Sequence` 기능 구현
 
 ### 학습
 - Encoder
