@@ -5,13 +5,13 @@
 
 ### 논문 요약
 - Variational AutoEncoder(VAE)를 이용하면 의미있는 latent representation vector 생성 가능
-- Long-Term Sequential Data에서는 어려움이 있음
 - <b>Recurrent VAE 적용 </b>
   - Latent Vector가 Global한 정보를 잘 capture함
+  - Long-Term Sequential Data에서는 어려움이 있음
 - <b>Hierarchical Decoder를 적용</b>
   - Posterior collapse를 피함
   - Long-Term sequence를 생성
-- Sampling, Interpolation, Reconstruction에서 더 좋은 성능을 보여줌 (Flat-Decoder와 비교)
+- Sampling, Interpolation, Reconstruction에서 더 좋은 성능을 보여줌 (`Flat-Decoder`와 비교)
 
 ### 데이터 도메인 이해 및 설계 과정
 - MusicVAE에서 전처리되어 벡터화 된 TFRecord를 사용하려 했으나, Pytorch로 구현하기 위해 처음부터 작업을 진행
