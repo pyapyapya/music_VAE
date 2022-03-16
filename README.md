@@ -15,9 +15,9 @@
 
 ### 데이터 도메인 이해 및 설계 과정
 - MusicVAE에서 전처리되어 벡터화 된 TFRecord를 사용하려 했으나, Pytorch로 구현하기 위해 처음부터 작업을 진행
-- Groove MIDI DataSets에서 드럼 데이터의 클래스는 9개로 구성되어 있음. (경우의 수: 2^9)
+- Groove MIDI DataSets에서 드럼 데이터의 클래스는 9개로 구성되어 있음. (경우의 수: 2^9=512)
 - 데이터를 단순화 작업으로 time_signiture는 4/4로 고정하였고, velocity에 one-hot encoding을 적용
-- 논문에서는 2-bar는 `Flat-Decoder` 를 사용하여, 4-bar에서도 `Flat-Deocder`우선 적용
+- 논문에서는 2-bar는 `Flat-Decoder` 를 사용하여, 4-bar에서도 `Flat-Decoder`우선 적용
 
 ### 전처리
 - CSV 파일에서 MIDI 파일 정보 파싱
