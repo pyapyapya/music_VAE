@@ -83,7 +83,7 @@ class MIDIParser:
         self.record: List[array, array] = []
 
     def parse(self):
-        for midi_data in tqdm(self.data_info):
+        for midi_data in tqdm(self.data_info[:1]):
             midi_file_path = self.get_midi_path(midi_data)
             if self.check_time_signature(midi_data):
                 preprocessor: MIDIPreprocessor = MIDIPreprocessor(midi_data, midi_file_path)
