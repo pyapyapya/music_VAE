@@ -21,7 +21,7 @@
 
 ### 전처리
 - CSV 파일에서 MIDI 파일 정보 파싱
-  - Drummer, bpm, time_signature, midi_filename, duration, split 데이터 사용
+  - bpm, midi_filename, duration, split 데이터 사용
 
 - MIDI 데이터 파싱 및 전처리
   - 음악이 0초부터 시작하는 `adjust_time` 구현
