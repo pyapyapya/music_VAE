@@ -58,7 +58,7 @@
 - latent를 loss함수로 `ELBO`를 사용하였고, 이는 `reconstruction accuracy` 와 `sampling quality`를 의미
 - ELBO를 학습시키는데 두가지 방향이 있음
   - Beta-VAE & Free Bits
-        - Beta-VAE는 ELBO의 두 항은 Trade-Off 인데, 이를 조절하는 역할
+        - Beta-VAE는 ELBO의 두 항은 Trade-Off 인데, KL-Divergence에 Beta를 곱함으로써 이를 조절하는 역할
         - Free Bits는 KL-Divergence를 lower-bound(Free Bits)를 최소화하고, 나머지는 reconstruction에 학습
   - Latent Space Manipulation
         -  z1과 z2를 Interpolation하여 새로운 latent vector를 생성하여 semantically meaningful한 음악 생성
