@@ -6,7 +6,7 @@
 ### 논문 요약
 - Variational AutoEncoder(VAE)를 이용하면 의미있는 latent representation vector 생성 가능
 - <b>Recurrent VAE 적용 </b>
-  - Latent Vector가 Global한 정보를 잘 capture함
+  - RNN의 특성이 Latent Vector를 무시할 수 있음
   - Long-Term Sequential Data에서는 어려움이 있음
 - <b>Hierarchical Decoder를 적용</b>
   - Posterior collapse를 피함
@@ -28,11 +28,12 @@
   - 16th note interval 만큼 `quantize` 기능 구현
   - MIDI 데이터를 벡터화 할 수 있는 `piano_roll` 구현 (batch, 9 channels, Max_Sequence)
 - MIDI 학습 데이터 구성
-  - 음악을 데이터를 4-bar 단위로 나누는 `Split_Sequence` 기능 구현
+  - 데이터를 4-bar 단위로 나누는 `Split_Sequence` 기능 구현
 
 ### 학습
 - Encoder
   - 학습 데이터를 Bi-LSTM에 적용하여 Latent Vector (mu, sigma) 추출
+  - mu, sigma에 매개변수 조정 기법(reparameterization trick)을 이용하여 새로운 latent vector 생성 기능 구현
 
 - Conductor 
 
