@@ -3,6 +3,10 @@
 ### 목표
 <b>Groove MIDI Dataset을 이용해 4마디에 해당하는 드럼 샘플 추출</b>
 
+
+<hr/>
+
+
 ### 논문 요약
 - Variational AutoEncoder(VAE)를 이용하면 의미있는 latent representation vector 생성 가능
 - <b>Recurrent VAE 적용 </b>
@@ -13,11 +17,19 @@
   - Long-Term sequence를 생성
 - Sampling, Interpolation, Reconstruction에서 더 좋은 성능을 보여줌 (`Flat-Decoder`와 비교)
 
+
+<hr/>
+
+
 ### 데이터 도메인 이해 및 설계 과정
 - MusicVAE에서 전처리되어 벡터화 된 TFRecord를 사용하려 했으나, Pytorch로 구현하기 위해 처음부터 작업을 진행
 - Groove MIDI DataSets에서 드럼 데이터의 클래스는 9개로 구성되어 있음. (경우의 수: 2^9=512)
 - 데이터를 단순화 작업으로 time_signiture는 4/4로 고정하였고, velocity에 one-hot encoding을 적용
 - 논문에서는 2-bar는 `Flat-Decoder` 를 사용하여, 4-bar에서도 `Flat-Decoder`우선 적용
+
+
+<hr/>
+
 
 ### 전처리
 - CSV 파일에서 MIDI 파일 정보 파싱
@@ -35,8 +47,12 @@
   - 학습 데이터를 Bi-LSTM에 적용하여 Latent Vector (mu, sigma) 추출
   - mu, sigma에 매개변수 조정 기법(reparameterization trick)을 이용하여 새로운 latent vector 생성 기능 구현
 
-- Conductor 
+<hr/>
 
+
+- Conductor 
+  - Beta-VAE & Free Bits
+  - Latent Space Manipulation
 - Decoder
 
 ### 생성
