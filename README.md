@@ -43,19 +43,30 @@
   - 데이터를 4-bar 단위로 나누는 `Split_Sequence` 기능 구현
 
 ### 학습
-- Encoder
+<b>Encoder</b>
+  - Input Data를 바탕으로 latent vector를 생성하는 역할
   - 학습 데이터를 Bi-LSTM에 적용하여 Latent Vector (mu, sigma) 추출
   - mu, sigma에 매개변수 조정 기법(reparameterization trick)을 이용하여 새로운 latent vector 생성 기능 구현
 
+<b>구현 완료</b>
+
+
 <hr/>
 
-
-- Conductor 
+<b>Conductor</b>
+- RNN based Embedding Vector를 생성하여 Decoder의 초기 값을 생성하는 역할
+- latent를 loss함수로 `ELBO`를 사용하였고, 이는 `reconstruction accuracy` 와 `sampling quality`를 의미
+- ELBO를 학습시키는데 두가지 방향이 있음
   - Beta-VAE & Free Bits
+        - Beta-VAE는 ELBO의 두 항은 Trade-Off 인데, 이를 조절하는 역할
+        - Free Bits는 KL-Divergence를 lower-bound(Free Bits)를 최소화하고, 나머지는 reconstruction에 학습
   - Latent Space Manipulation
-- Decoder
+        -  z1과 z2를 Interpolation하여 새로운 latent vector를 생성하여 semantically meaningful한 음악 생성
+        -  이에 대한 결과로 `conductor vector` 생성
 
-### 생성
-- Reconstruction
-- Interpolation
-- Attribute Vector
+
+
+<b>Decoder</b>
+  - Conductor에서 받은 latent 정보를 가지고 음악을 생성하는 역할
+  - Long-Term 학습을 잘하기 위해 RNN based `Hierarchical Decoder` 사용
+  - Decoder는 Conductor Vector와 concatnate되어 `Sub-Sequence Data`를 생성
