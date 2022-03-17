@@ -5,4 +5,4 @@ magenta/
 note-seq/
 venv/
 *.py
-
+*.log
